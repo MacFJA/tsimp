@@ -5,7 +5,7 @@
 // return the same object if it parses to the same values.
 import { catcher } from '@isaacs/catcher'
 import { statSync } from 'fs'
-import { resolve } from 'path'
+import { dirname, resolve } from 'node:path'
 import ts from 'typescript'
 import { walkUp } from 'walk-up-path'
 import { error, warn } from '../debug.js'
@@ -73,7 +73,7 @@ export const tsconfig = () => {
       // also default to recommended setting for node programs
       {
         compilerOptions: {
-          rootDir: dir,
+          rootDir: dirname(configPath),
           skipLibCheck: true,
           isolatedModules: true,
           esModuleInterop: true,
@@ -106,7 +106,11 @@ export const tsconfig = () => {
         noEmit: false,
       },
     })
-    const newConfig = ts.parseJsonConfigFileContent(res, ts.sys, dir)
+    const newConfig = ts.parseJsonConfigFileContent(
+      res,
+      ts.sys,
+      dirname(configPath)
+    )
     const newConfigJSON = JSON.stringify(newConfig)
     if (loadedConfig && newConfigJSON === loadedConfigJSON) {
       // no changes, keep the old one

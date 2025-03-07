@@ -8,8 +8,13 @@ const bin = fileURLToPath(
   new URL('../dist/esm/bin.mjs', import.meta.url),
 )
 
-const run = (args: string[]) =>
-  spawnSync(process.execPath, [bin, ...args], { encoding: 'utf8' })
+const run = (args: string[], tsconfigPath?: string) =>
+  spawnSync(process.execPath, [bin, ...args], {
+    encoding: 'utf8',
+    env: {
+      TSIMP_PROJECT: tsconfigPath,
+    },
+  })
 
 t.teardown(() => run(['--stop']))
 
@@ -68,30 +73,33 @@ t.test('actually run a program', async t => {
 
     // subpath import tests
     'package.json': JSON.stringify({
-      "type": "module",
-      "imports": {
-        "#utilities/*": "./utilities/*"
-      }
+      type: 'module',
+      imports: {
+        '#utilities/*': './utilities/*',
+      },
     }),
     'tsconfig.json': JSON.stringify({
-      "compilerOptions": {
-        "baseUrl": ".",
-        "paths": {
-          "#utilities/*": ["./utilities/*"],
-        }
+      compilerOptions: {
+        baseUrl: '.',
+        resolvePackageJsonImports: true,
+        paths: {
+          '+utilities/*': ['./utilities/*'],
+        },
       },
     }),
 
-    'utilities': {
-      'source': {
-        'constants.ts': 'enum Constants { one = "one", two = "two" }; export default Constants;'
-      }
+    utilities: {
+      source: {
+        'constants.ts':
+          'enum Constants { one = "one", two = "two", three = "three" }; export default Constants;',
+      },
     },
 
-    "test": {
+    test: {
       'getOne.ts': `import Constants from "../utilities/source/constants.js"; console.log(Constants.one);`,
-      'getTwo.ts': `import Constants from "#utilities/source/constants.js"; console.log(Constants.two);`
-    }
+      'getTwo.ts': `import Constants from "#utilities/source/constants.ts"; console.log(Constants.two);`,
+      'getThree.ts': `import Constants from "+utilities/source/constants.js"; console.log(Constants.three);`,
+    },
   })
   const rel = relative(process.cwd(), dir).replace(/\\/g, '/')
 
@@ -154,18 +162,39 @@ t.test('actually run a program', async t => {
   })
 
   t.test('run file with subpath imports', async t => {
+    run(['--restart'], `./${rel}/tsconfig.json`)
+
     {
       const pathToFile = `./${rel}/test/getOne.ts`
-      const { stdout, status } = run([pathToFile])
+      const { stdout, status } = run(
+        [pathToFile],
+        `./${rel}/tsconfig.json`
+      )
+
       t.equal(status, 0)
       t.equal(stdout, 'one\n')
     }
 
     {
       const pathToFile = `./${rel}/test/getTwo.ts`
-      const { stdout, status } = run([pathToFile])
+      const { stdout, status } = run(
+        [pathToFile],
+        `./${rel}/tsconfig.json`
+      )
+
       t.equal(status, 0)
       t.equal(stdout, 'two\n')
+    }
+
+    {
+      const pathToFile = `./${rel}/test/getThree.ts`
+      const { stdout, status } = run(
+        [pathToFile],
+        `./${rel}/tsconfig.json`
+      )
+
+      t.equal(status, 0)
+      t.equal(stdout, 'three\n')
     }
   })
 })

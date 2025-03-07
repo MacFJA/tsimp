@@ -66,6 +66,7 @@ const createTsTranspileModule = ({
     ) {
       continue
     }
+    if (option.name === 'paths') continue
 
     options[option.name] = option.transpileOptionValue
   }

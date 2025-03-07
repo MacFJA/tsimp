@@ -13,6 +13,7 @@ import { MessagePort } from 'node:worker_threads'
 import { classifyModule } from '../classify-module.js'
 import { DaemonClient } from '../client.js'
 import { getDiagMode } from '../diagnostic-mode.js'
+import { resolveMapping } from '../service/resolve-mapping.js'
 
 // in some cases on the loader thread, console.error doesn't actually
 // print. sync write to fd 1 instead.
@@ -54,6 +55,7 @@ export const resolve: ResolveHook = async (
   context,
   nextResolve,
 ) => {
+  url = resolveMapping(url, context.parentURL)
   const { parentURL } = context
   const target =
     /* c8 ignore start */
